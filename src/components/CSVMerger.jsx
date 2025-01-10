@@ -5,8 +5,27 @@ const CSVMerger = () => {
   const [mergedData, setMergedData] = useState(null);
   const [error, setError] = useState('');
 
-  const processCSV = (content) => {
+  const extractAccountInfo = (filename) => {
+    // Extract everything after the last underscore and before .csv
+    const match = filename.match(/\_([^_]+)\.csv$/);
+    if (!match) return { name: '', last4: '' };
+
+    const fullAccount = match[1];
+    // Extract last 4 digits and name
+    const last4Match = fullAccount.match(/\d{4}$/);
+    const last4 = last4Match ? last4Match[0] : '';
+    const name = fullAccount.replace(last4, '').trim(); // Remove the numbers to get just the name
+
+    return {
+      name: name,
+      last4: last4
+    };
+  };
+
+  const processCSV = (content, filename) => {
     try {
+      const accountInfo = extractAccountInfo(filename);
+
       // Split into lines and remove empty ones
       const lines = content.split('\n')
         .map(line => line.trim())
@@ -17,10 +36,11 @@ const CSVMerger = () => {
         const parts = line.split(',');
         if (parts[0] === 'CHK_SAV_LOC_IRA') {
           return {
-            account: parts[0],
+            name: accountInfo.name,
+            last4: accountInfo.last4,
             date: parts[1],
             description: parts[4].trim(),
-            amount: parts[6] || parts[5] || '' // Check both possible amount positions
+            amount: parts[6] || parts[5] || ''
           };
         }
         return null;
@@ -45,7 +65,7 @@ const CSVMerger = () => {
           reader.readAsText(file);
         });
 
-        const data = processCSV(content);
+        const data = processCSV(content, file.name);
         allData = [...allData, ...data];
       }
 
@@ -113,7 +133,8 @@ const CSVMerger = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last 4</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
@@ -122,7 +143,8 @@ const CSVMerger = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {mergedData.map((row, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.account}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.last4}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.date}</td>
                       <td className="px-6 py-4 text-sm text-gray-900">{row.description}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right" style={getRowStyle(row.amount)}>
